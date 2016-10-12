@@ -5,12 +5,13 @@ Simple command line docker local management in python
 Docker is awesome and surrounded with great tools, so why create something else ? Well my friends, isn't it what's internet is all about ? :)
 
 For the most curious ones, here's the story, feel free to skip it anytime!
-I 'm using docker on a synology nas (to be honest, on a HP N54L running xpenology), and it comes with a nice gui. 
+I 'm using docker on a synology nas (to be honest, on a HP N54L running xpenology/DSM 5), and it comes with a nice gui. 
 Really, it's nice, it has integrated images search, containers creation helper using a wizard or parsing a "docker run" command, easy start and stop, host and containers ressource monitoring, integrated interactive shell, and a great import/export of container configuration. That last point is useful imho, and is in a way the start of pycod.
 
 Back to synology os, dsm, it's a lightweight linux based os with a great gui and poor command line support. This can be improved with ipkg support, but that's not the point  here, because python is already installed and ready to go, so let's use it to deal with docker's magic containers! What? Never used it before and code like crap? Who cares, it's internet, it's not like someone's gonna notice in the zillions github repositories?
 
 # Features
+- Based on outdated docker 1.6 on dsm 5 :(
 - Single file simple python script, nothing fancy to install
 - Json file container configuration
 - Made for dsm/xpenology, but should work anywhere you may fool enough to run it
@@ -92,6 +93,11 @@ Simple json file loosely based on dsm's export, here's an example :
 usage: pycod [-h] [--dry-run]
               {info,shell,start,stop,restart,refresh,run,remove} application
 ```
+With the example json file stored in CONTAINERS_PATH/deluge/deluge.json :
+```shell
+pycod run deluge
+```
+will run a new container fully configured! Logs of all operations can be found in application folder.
 
 # Anything else ?
 I couldn't find another project usable on synology's dsm with the same features, feel free to indicate me if there's any! (yes I know about fugu which is much better than pycod on many levels, but I'm too scared to die if use it :p)
