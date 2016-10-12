@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 import json
 import argparse
@@ -10,7 +10,9 @@ from subprocess import Popen, PIPE
 import shlex
 
 CONTAINERS_PATH = "/volume1/docker/"
+CONTAINERS_PATH = "./"
 DOCKER_BIN = "docker"
+DOCKER_BIN = "faker"
 
 global CONF_FILE 
 global DRY_RUN
@@ -19,7 +21,7 @@ def main():
 	# handle parameters
 	###################
 	parser = argparse.ArgumentParser(description="doc parser")
-	parser.add_argument("command", help = "command to launch", choices=["info", "shell", "start", "stop", "restart", "refresh", "run", "remove"])
+	parser.add_argument("command", help = "command to launch", choices=["info", "wizard", "shell", "start", "stop", "restart", "refresh", "run", "remove"])
 	parser.add_argument("application", help ="application name")
 	parser.add_argument("--dry-run", action="store_true", dest="dry_run")
 	args = parser.parse_args()
@@ -28,6 +30,11 @@ def main():
 	application = args.application
 	global DRY_RUN
 	DRY_RUN = args.dry_run
+
+	if command == "wizard":
+		wizard(application)
+		print("Wizard is going home!")
+		sys.exit(0)
 
 	# logging
 	#########
@@ -55,7 +62,7 @@ def main():
 		except:
 			logging.error("Error opening config file %s" % CONF_FILE)
 			print ("Error opening config file %s" % CONF_FILE)
-			os.exit(2)
+			sys.exit(2)
 
 	# handle commands
 	#################
@@ -94,7 +101,7 @@ def callDocker (command_options):
 	except:
 		logging.error("Docker command failed %s" % docker_cmd)
 		logging.error("%s" % err)
-		os.exit(2)
+		sys.exit(2)
 	logging.debug(output)
 	return output
 
@@ -208,6 +215,38 @@ def run ( params ):
 	output = callDocker(cmd)
 	logging.info(output)
 	print(output)
+
+def wizard ( application ):
+	params = {}
+	confirm = "n"
+	while (confirm != "y"):
+		print("Wilkommen im Wizard!")
+		params["name"] = application
+		output = callDocker("images")
+		print output
+		params["image"] = raw_input("Image: ")
+		params["image_tag"] = raw_input("Image tag [latest]: ") or "latest"
+		confirm = raw_input("%s based on %s:%s, confirm ? [y]/n: " % (params["name"], params["image"], params["image_tag"])) or "y"
+
+	confirm = "n"
+	while (confirm != "y"):
+		params["restart"] = raw_input("restart [always]: ") or "always"
+		params["net"] = raw_input("net: ")
+		params["prefered_shell"] = raw_input("prefered shell [/bin/bash]: ") or "/bin/bash"
+		confirm = raw_input("confirm previous values ? [y]/n: ") or "y"
+	
+	add_volume = raw_input("Do you want to add volumes ? [y]/n: ") or "y"
+	if (add_volume == "y"):
+		volumes_bindings = []
+		confirm = "y"
+		while (confirm == "y"):
+			volume_binding = {}
+			volume_binding["host_volume_file"] = raw_input("host volume : ")
+			volume_binding["mount_point"] = raw_input("mount point: ")
+			volume_binding["mount_type"] = raw_input("mount type [rw]: ") or "rw"
+			volumes_bindings.append(volume_binding.copy())
+			confirm = raw_input("add another volume ? ")
+	print volumes_bindings	
 	
 # application main
 ##################
