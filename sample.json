@@ -1,0 +1,34 @@
+{
+    "name": "", 
+    "image": "", 
+    "image_tag": "latest",
+    "net": "",
+    "id": "", 
+    "restart": "always"
+    "prefered_shell": "/bin/bash",
+    "env_variables": [
+	{
+	    "name": "",
+	    "value": 0
+	}
+    ], 
+    "volumes_bindings": [
+        {
+            "host_volume_file": "", 
+            "mount_point": "", 
+            "type": "rw"
+        } 
+    ], 
+    "port_bindings": [
+        {
+            "host_port": 0, 
+            "type": "tcp", 
+            "container_port": 0
+        }, 
+        {
+            "host_port": 0, 
+            "type": "udp", 
+            "container_port": 0
+        } 
+    ], 
+}
