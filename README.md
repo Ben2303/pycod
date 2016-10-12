@@ -31,7 +31,7 @@ Download the python file (make it executable if needed), and set the CONTAINERS_
 Simple json file loosely based on dsm's export, here's an example :
 ```json
 	{
-		'name': "deluge",
+		"name": "deluge",
 		"image": "someRepo/deluge",
 		"image_tag": "latest",
 		"id": "",
