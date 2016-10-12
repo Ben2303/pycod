@@ -55,7 +55,7 @@ def main():
 		except:
 			logging.error("Error opening config file %s" % CONF_FILE)
 			print ("Error opening config file %s" % CONF_FILE)
-			os.exit(2)
+			sys.exit(2)
 
 	# handle commands
 	#################
@@ -94,7 +94,7 @@ def callDocker (command_options):
 	except:
 		logging.error("Docker command failed %s" % docker_cmd)
 		logging.error("%s" % err)
-		os.exit(2)
+		sys.exit(2)
 	logging.debug(output)
 	return output
 
