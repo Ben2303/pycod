@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 import json
 import argparse
@@ -31,10 +31,6 @@ def main():
 	global DRY_RUN
 	DRY_RUN = args.dry_run
 
-	if command == "wizard":
-		wizard(application)
-		print("Wizard is going home!")
-		sys.exit(0)
 
 	# logging
 	#########
@@ -48,47 +44,58 @@ def main():
 	logging.info("command: %s " % command)
 	logging.info("dry-run ? %s" % str(DRY_RUN))
 
+
+	# handle commands
+	#################
+	if command == "wizard":
+	    wizard(application)
+	    print("Wizard is going home!")
+	else:
+	    params = readParams(application)
+ 	    if command == "info":
+		info(params)
+	    elif command == "shell":
+		shell(params)
+	    elif command == "start":
+		start(params)
+	    elif command == "stop":
+		stop(params)
+	    elif command == "restart":
+		stop(params)
+		start(params)
+	    elif command == "refresh":
+		updateImage(params)
+		stop(params)
+		start(params)
+	    elif command == "remove":
+		stop(params)
+		remove(params)
+	    elif command == "run":
+		run(params)
+		
+	sys.exit(0)
+
+# functions
+###########
+def readParams ( application ):
 	# open container configuration file
 	###################################
 	global CONF_FILE
 	#CONF_FILE = "".join((CONTAINERS_PATH, args.application, "/", args.application, ".json"))
-	CONF_FILE = ("%s%s/%s.json" % (CONTAINERS_PATH, args.application, args.application))
+	CONF_FILE = ("%s%s/%s.json" % (CONTAINERS_PATH, application, application))
 	logging.debug("Opening conf file %s" % CONF_FILE)
 
 	with open(CONF_FILE) as json_data:
 		try:
 			params = json.load(json_data)
 			logging.debug("configuration file loaded")
+			return params
 		except:
 			logging.error("Error opening config file %s" % CONF_FILE)
 			print ("Error opening config file %s" % CONF_FILE)
 			sys.exit(2)
+	
 
-	# handle commands
-	#################
-	if command == "info":
-		info(params)
-	elif command == "shell":
-		shell(params)
-	elif command == "start":
-		start(params)
-	elif command == "stop":
-		stop(params)
-	elif command == "restart":
-		stop(params)
-		start(params)
-	elif command == "refresh":
-		updateImage(params)
-		stop(params)
-		start(params)
-	elif command == "remove":
-		stop(params)
-		remove(params)
-	elif command == "run":
-		run(params)
-
-# functions
-###########
 def callDocker (command_options):
 	# Is it a good idea ?
 	docker_cmd = "%s %s" % (DOCKER_BIN, command_options)
