@@ -100,4 +100,5 @@ pycod run deluge
 will run a new container fully configured! Logs of all operations can be found in application folder.
 
 # Anything else ?
+dev branch is definitly more interesting than master, but can be quite unstable.
 I couldn't find another project usable on synology's dsm with the same features, feel free to indicate me if there's any! (yes I know about fugu which is much better than pycod on many levels, but I'm too scared to die if use it :p)
