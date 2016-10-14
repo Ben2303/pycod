@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 import json
 import argparse
-import sys 
+import sys ,os
 import logging
 from subprocess import Popen, PIPE
 import shlex
+
+global CONTAINERS_PATH
+global CONF_FILE 
+global DRY_RUN
 
 CONTAINERS_PATH = "/volume1/docker/"
 CONTAINERS_PATH = "./"
 DOCKER_BIN = "docker"
 DOCKER_BIN = "faker"
-
-global CONF_FILE 
-global DRY_RUN
 
 def main():
 	# handle parameters
@@ -34,11 +35,10 @@ def main():
 
 	# logging
 	#########
-	#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
-	log_file = ("%s%s/%s.log" % (CONTAINERS_PATH, args.application, args.application))
 	if DRY_RUN:
 		logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format="%(levelname)s - %(message)s")
 	else:
+		log_file = os.path.join(CONTAINERS_PATH, application, "%s.log" % application)
 		logging.basicConfig(filename=log_file, level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 	logging.info("\n***********************\n*** New doc session ***\n***********************") #debug, info, warning, error, critical
 	logging.info("command: %s " % command)
@@ -81,8 +81,8 @@ def readParams ( application ):
 	# open container configuration file
 	###################################
 	global CONF_FILE
-	#CONF_FILE = "".join((CONTAINERS_PATH, args.application, "/", args.application, ".json"))
-	CONF_FILE = ("%s%s/%s.json" % (CONTAINERS_PATH, application, application))
+	CONF_FILE = os.path.join(CONTAINERS_PATH, application, "%s.json" % application)
+	#CONF_FILE = ("%s%s/%s.json" % (CONTAINERS_PATH, application, application))
 	logging.debug("Opening conf file %s" % CONF_FILE)
 
 	with open(CONF_FILE) as json_data:
@@ -224,6 +224,7 @@ def run ( params ):
 	print(output)
 
 def wizard ( application ):
+	global CONTAINERS_PATH
 	params = {}
 	confirm = "n"
 	while (confirm != "y"):
@@ -233,16 +234,16 @@ def wizard ( application ):
 		print output
 		params["image"] = raw_input("Image: ")
 		params["image_tag"] = raw_input("Image tag [latest]: ") or "latest"
-		confirm = raw_input("%s based on %s:%s, confirm ? [y]/n: " % (params["name"], params["image"], params["image_tag"])) or "y"
+		confirm = raw_input("%s based on %s:%s, confirm? [y]/n: " % (params["name"], params["image"], params["image_tag"])) or "y"
 
 	confirm = "n"
 	while (confirm != "y"):
 		params["restart"] = raw_input("restart [always]: ") or "always"
 		params["net"] = raw_input("net: ")
 		params["prefered_shell"] = raw_input("prefered shell [/bin/bash]: ") or "/bin/bash"
-		confirm = raw_input("confirm previous values ? [y]/n: ") or "y"
+		confirm = raw_input("confirm previous values? [y]/n: ") or "y"
 	
-	add_volume = raw_input("Do you want to add volumes ? [y]/n: ") or "y"
+	add_volume = raw_input("Do you want to add volumes? [y]/n: ") or "y"
 	if (add_volume == "y"):
 		volumes_bindings = []
 		confirm = "y"
@@ -252,9 +253,41 @@ def wizard ( application ):
 			volume_binding["mount_point"] = raw_input("mount point: ")
 			volume_binding["mount_type"] = raw_input("mount type [rw]: ") or "rw"
 			volumes_bindings.append(volume_binding.copy())
-			confirm = raw_input("add another volume ? ")
+			confirm = raw_input("add another volume? y/n:  ")
 	print volumes_bindings	
-	
+	add_port = raw_input("Do you want to add ports mapping? [y]/n: ") or "y"
+	if (add_port == "y"):
+		port_bindings = []
+		confirm = "y"
+		while (confirm == "y"):
+			port_binding = {}
+			port_binding["container_port"] = raw_input("container port: ")
+			port_binding["host port"] = raw_input("host port [%s]: " % port_binding["container_port"]) or port_binding["container_port"]
+			port_binding["type"] = raw_input("port type [tcp]: ") or "tcp"
+			port_bindings.append(port_binding.copy())
+			confirm = raw_input("add another port? y/n: ")	
+	print port_bindings
+	add_variables = raw_input("Do you want to add environment variables? y/n: ")
+	if (add_variables == "y"):
+		env_variables = []
+		confirm = "y"
+		while (confirm == "y"):
+			env_variable = {}
+			env_variable["name"] = raw_input("variable name: ")
+			env_variable["value"] = raw_input("variable value: ")
+			env_variables.append(env_variable.copy())
+	print env_variables
+
+	# Configuration file management
+	###############################
+	if (os.path.isdir("%s%s" % (CONTAINERS_PATH, application))):
+		if (os.path.isfile("%s%s/%s.json" % (CONTAINERS_PATH, application, application))):
+			bad_idea_confirmation = raw_input ("Configuration file exists, replacing it seems to be a bad idea, do you want to do it? y/[n]: ") or "n"
+			if (bad_idea_confirmation == "y"):
+				#os.path.join(path, *paths)
+				print("you are so dead")
+						
+
 # application main
 ##################
 if __name__ == "__main__":
