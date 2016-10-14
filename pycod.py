@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__version__ = '0.0.5'
+__version__ = '0.0.6'
 
 import json
 import argparse
@@ -31,6 +31,8 @@ def main():
 	application = args.application
 	global DRY_RUN
 	DRY_RUN = args.dry_run
+	global CONF_FILE
+	CONF_FILE = os.path.join(CONTAINERS_PATH, application, "%s.json" % application)
 
 
 	# logging
@@ -80,9 +82,6 @@ def main():
 def readParams ( application ):
 	# open container configuration file
 	###################################
-	global CONF_FILE
-	CONF_FILE = os.path.join(CONTAINERS_PATH, application, "%s.json" % application)
-	#CONF_FILE = ("%s%s/%s.json" % (CONTAINERS_PATH, application, application))
 	logging.debug("Opening conf file %s" % CONF_FILE)
 
 	with open(CONF_FILE) as json_data:
@@ -100,7 +99,9 @@ def callDocker (command_options):
 	# Is it a good idea ?
 	docker_cmd = "%s %s" % (DOCKER_BIN, command_options)
 	logging.info(docker_cmd)
+	
 	if (DRY_RUN): return
+	
 	process = Popen(shlex.split(docker_cmd))
 	try:
 		(output, err) = process.communicate()
@@ -280,13 +281,25 @@ def wizard ( application ):
 
 	# Configuration file management
 	###############################
-	if (os.path.isdir("%s%s" % (CONTAINERS_PATH, application))):
-		if (os.path.isfile("%s%s/%s.json" % (CONTAINERS_PATH, application, application))):
-			bad_idea_confirmation = raw_input ("Configuration file exists, replacing it seems to be a bad idea, do you want to do it? y/[n]: ") or "n"
-			if (bad_idea_confirmation == "y"):
-				#os.path.join(path, *paths)
-				print("you are so dead")
-						
+	if (os.path.isfile(CONF_FILE)):
+		logging.warning("%s already exists :|" % CONF_FILE)
+		bad_idea_confirmation = raw_input ("Configuration file exists, replacing it seems to be a bad idea, do you want to do it? y/[n]: ") or "n"
+		if (bad_idea_confirmation == "y"):
+			#os.path.join(path, *paths)
+			print("you are so dead")
+		else:
+			# save tempory conf file anyway
+			print params
+	
+	else:
+		if (not os.path.isdir(os.path.dirname(CONF_FILE))):
+			try:
+				os.mkdir(os.path.dirname(CONF_FILE))
+			except:
+				logging.error(os.error)
+				print os.error
+	logging.info(prams)
+	
 
 # application main
 ##################
