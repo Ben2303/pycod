@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__version__ = '0.0.6'
+__version__ = '0.0.7'
 
 import json
 import argparse
@@ -14,9 +14,9 @@ global CONF_FILE
 global DRY_RUN
 
 CONTAINERS_PATH = "/volume1/docker/"
-CONTAINERS_PATH = "./"
+#CONTAINERS_PATH = "./"
 DOCKER_BIN = "docker"
-DOCKER_BIN = "faker"
+#DOCKER_BIN = "faker"
 
 def main():
 	# handle parameters
@@ -84,9 +84,9 @@ def readParams ( application ):
 	###################################
 	logging.debug("Opening conf file %s" % CONF_FILE)
 
-	with open(CONF_FILE) as json_data:
+	with open(CONF_FILE) as conf_file:
 		try:
-			params = json.load(json_data)
+			params = json.load(conf_file)
 			logging.debug("configuration file loaded")
 			return params
 		except:
@@ -95,22 +95,27 @@ def readParams ( application ):
 			sys.exit(2)
 	
 
-def callDocker (command_options):
+def callDocker (command_options, interactive = False): 
 	# Is it a good idea ?
 	docker_cmd = "%s %s" % (DOCKER_BIN, command_options)
 	logging.info(docker_cmd)
 	
 	if (DRY_RUN): return
 	
-	process = Popen(shlex.split(docker_cmd))
+	if interactive:
+		process = Popen(shlex.split(docker_cmd))
+	else:
+		process = Popen(shlex.split(docker_cmd), stdout=PIPE)
+
 	try:
 		(output, err) = process.communicate()
 		exit_code = process.wait()
+		logging.debug("callDocker: %s / %s" % (output, err))
 	except:
 		logging.error("Docker command failed %s" % docker_cmd)
 		logging.error("%s" % err)
 		sys.exit(2)
-	logging.debug(output)
+	logging.debug("callDocker: %s" % output)
 	return output
 
 def getContainerId (params):
@@ -118,20 +123,24 @@ def getContainerId (params):
 	cmd = "ps --filter 'name=%s' --format '{{.ID}}'" % (params["name"])
 	logging.debug(cmd)
 	output = callDocker(cmd)
+	logging.debug(output)
 	if (DRY_RUN): output = params["id"]
 	return str(output).rstrip()
 
-def setContainerId ( newId ):
+def setContainerId ( new_id):
 	# Need to bulletproof this later
 	if (DRY_RUN): return
 	try:
-		with open(CONF_FILE, "r+") as confFile:
-			jsonData = json.load(confFile)
-			jsonData["id"] = newId
-			confFile.seek(0)
-			json.dump(jsonData, confFile)
+		with open(CONF_FILE, "r+") as conf_file:
+			jsonData = json.load(conf_file)
+			logging.debug("loaded %s:%s" % (conf_file, jsonData["name"]))
+			jsonData["id"] = str(new_id)
+			conf_file.seek(0)
+			json.dump(jsonData, conf_file, indent=4, sort_keys=True)
+			logging.debug("new id: %s" % new_id)
 	except:
 		logging.error("Can't write to file %s" % CONF_FILE)
+		logging.error(sys.exc_info())
 		
 
 def updateImage (params):
@@ -140,6 +149,8 @@ def updateImage (params):
 	output = callDocker (cmd)
 
 def info ( params ):
+	# print json.dumps(params, sort_keys=True, indent=4, separators=(',', ': '))
+	#docker inspect -f {{.Mounts}} deluge
 	print ("**** %s **** based on %s:%s" % (params["name"], params["image"], params["image_tag"]))
 	print (" > id: %s" % params["id"])
 	print (" > restart: %s" % params["restart"])
@@ -184,7 +195,7 @@ def shell ( params ):
 		prefered_shell = "/bin/bash"
 	cmd = "exec -it %s %s" % (id_container, prefered_shell)
 	logging.info("Launching %s on %s" % (prefered_shell, params["name"]))
-	output = callDocker(cmd)
+	output = callDocker(cmd, interactive=True)
 	print ("Back to docker host :) ")
 	
 def start ( params ):
