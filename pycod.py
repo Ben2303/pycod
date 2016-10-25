@@ -1,22 +1,22 @@
 #!/usr/bin/env python
 
-__version__ = '0.0.7'
+__version__ = '0.0.8'
 
 import json
 import argparse
-import sys ,os
+import sys, os
 import logging
 from subprocess import Popen, PIPE
-import shlex
+import shutil, shlex
 
 global CONTAINERS_PATH
 global CONF_FILE 
 global DRY_RUN
 
 CONTAINERS_PATH = "/volume1/docker/"
-#CONTAINERS_PATH = "./"
+CONTAINERS_PATH = "./"
 DOCKER_BIN = "docker"
-#DOCKER_BIN = "faker"
+DOCKER_BIN = "faker"
 
 def main():
 	# handle parameters
@@ -30,7 +30,10 @@ def main():
 	command = args.command
 	application = args.application
 	global DRY_RUN
-	DRY_RUN = args.dry_run
+	if command == "wizard":
+		DRY_RUN = True
+	else:
+		DRY_RUN = args.dry_run
 	global CONF_FILE
 	CONF_FILE = os.path.join(CONTAINERS_PATH, application, "%s.json" % application)
 
@@ -80,8 +83,6 @@ def main():
 # functions
 ###########
 def readParams ( application ):
-	# open container configuration file
-	###################################
 	logging.debug("Opening conf file %s" % CONF_FILE)
 
 	with open(CONF_FILE) as conf_file:
@@ -93,8 +94,46 @@ def readParams ( application ):
 			logging.error("Error opening config file %s" % CONF_FILE)
 			print ("Error opening config file %s" % CONF_FILE)
 			sys.exit(2)
-	
 
+def writeJson ( out_file, data ):
+	tmp_file = "%s%s" % (out_file, ".tmp")
+	with open(tmp_file, "w") as conf_file:
+		try:
+			json.dump(data, conf_file, indent=4, sort_keys=True)
+		except:
+			logging.error("Error writing tmp file %s" % tmp_file)
+			logging.error(os.error)
+			print os.error
+	bak_file = "%s%s" % (out_file, ".bak")
+	if (os.path.isfile(out_file)):
+		shutil.move(out_file, bak_file)
+	shutil.move(tmp_file, out_file)
+	
+def writeParams ( params ):
+	if (not os.path.isdir(os.path.dirname(CONF_FILE))):
+		try:
+			os.mkdir(os.path.dirname(CONF_FILE))
+			logging.info("directory didn't exist, I created it for you!")
+		except:
+			logging.error(os.error)
+			print os.error
+
+	if (os.path.isfile(CONF_FILE)):
+		logging.warning("%s already exists :|" % CONF_FILE)
+		bad_idea_confirmation = raw_input ("Configuration file exists, replacing it seems to be a bad idea, do you want to do it anyway? y/[n]: ") or "n"
+		if (bad_idea_confirmation == "y"):
+			#os.path.join(path, *paths)
+			print("you are so dead")
+		else:
+			# save tempory conf file anyway
+			print params
+			sys.exit(1)
+
+	writeJson (CONF_FILE, params)	
+	logging.info("New configuration file created %s" % CONF_FILE)
+	logging.debug("configuration file check needed %s" % CONF_FILE)
+	
+	
 def callDocker (command_options, interactive = False): 
 	# Is it a good idea ?
 	docker_cmd = "%s %s" % (DOCKER_BIN, command_options)
@@ -127,20 +166,12 @@ def getContainerId (params):
 	if (DRY_RUN): output = params["id"]
 	return str(output).rstrip()
 
-def setContainerId ( new_id):
+def setContainerId ( params, new_id ):
 	# Need to bulletproof this later
 	if (DRY_RUN): return
-	try:
-		with open(CONF_FILE, "r+") as conf_file:
-			jsonData = json.load(conf_file)
-			logging.debug("loaded %s:%s" % (conf_file, jsonData["name"]))
-			jsonData["id"] = str(new_id)
-			conf_file.seek(0)
-			json.dump(jsonData, conf_file, indent=4, sort_keys=True)
-			logging.debug("new id: %s" % new_id)
-	except:
-		logging.error("Can't write to file %s" % CONF_FILE)
-		logging.error(sys.exc_info())
+	params["id"] = str(new_id)
+	writeParams(params)
+	logging.info("Writen new id %s in file %s" % (new_id, CONF_FILE))
 		
 
 def updateImage (params):
@@ -173,7 +204,7 @@ def info ( params ):
 	if "env_variables" in params:
                 print ("** Env variables **")
                 for env_variable in params["env_variables"]:
-                        print ("   > %s = %s" % (str(env_variable["name"]), str(env_variable["value"])))
+                        print ("   > %s = %s" % (str(env_variable["key"]), str(env_variable["value"])))
         else:
                 print ("no variable")
 
@@ -185,7 +216,7 @@ def shell ( params ):
 	if (id_container <> params["id"]):
 		logging.info("different ids found, update json file with %s" % id_container)
 		# for synology compatibility for now
-		setContainerId(id_container)
+		setContainerId(params, id_container)
 
 	# Launch Shell
 	##############
@@ -242,6 +273,7 @@ def wizard ( application ):
 	while (confirm != "y"):
 		print("Wilkommen im Wizard!")
 		params["name"] = application
+		params["id"] = ""
 		output = callDocker("images")
 		print output
 		params["image"] = raw_input("Image: ")
@@ -255,61 +287,51 @@ def wizard ( application ):
 		params["prefered_shell"] = raw_input("prefered shell [/bin/bash]: ") or "/bin/bash"
 		confirm = raw_input("confirm previous values? [y]/n: ") or "y"
 	
+	volumes_bindings = []
 	add_volume = raw_input("Do you want to add volumes? [y]/n: ") or "y"
 	if (add_volume == "y"):
-		volumes_bindings = []
 		confirm = "y"
 		while (confirm == "y"):
 			volume_binding = {}
 			volume_binding["host_volume_file"] = raw_input("host volume : ")
 			volume_binding["mount_point"] = raw_input("mount point: ")
-			volume_binding["mount_type"] = raw_input("mount type [rw]: ") or "rw"
+			volume_binding["type"] = raw_input("mount type [rw]: ") or "rw"
 			volumes_bindings.append(volume_binding.copy())
 			confirm = raw_input("add another volume? y/n:  ")
 	print volumes_bindings	
+	params["volumes_bindings"] = volumes_bindings
+	
+	port_bindings = []
 	add_port = raw_input("Do you want to add ports mapping? [y]/n: ") or "y"
 	if (add_port == "y"):
-		port_bindings = []
 		confirm = "y"
 		while (confirm == "y"):
 			port_binding = {}
 			port_binding["container_port"] = raw_input("container port: ")
-			port_binding["host port"] = raw_input("host port [%s]: " % port_binding["container_port"]) or port_binding["container_port"]
+			port_binding["host_port"] = raw_input("host port [%s]: " % port_binding["container_port"]) or port_binding["container_port"]
 			port_binding["type"] = raw_input("port type [tcp]: ") or "tcp"
 			port_bindings.append(port_binding.copy())
 			confirm = raw_input("add another port? y/n: ")	
 	print port_bindings
+	params["port_bindings"] = port_bindings
+
+	env_variables = []
 	add_variables = raw_input("Do you want to add environment variables? y/n: ")
 	if (add_variables == "y"):
-		env_variables = []
 		confirm = "y"
 		while (confirm == "y"):
 			env_variable = {}
-			env_variable["name"] = raw_input("variable name: ")
+			env_variable["key"] = raw_input("variable key: ")
 			env_variable["value"] = raw_input("variable value: ")
 			env_variables.append(env_variable.copy())
+			confirm = raw_input("add another variable? y/n: ")
 	print env_variables
+	params["env_variables"] = env_variables
 
 	# Configuration file management
 	###############################
-	if (os.path.isfile(CONF_FILE)):
-		logging.warning("%s already exists :|" % CONF_FILE)
-		bad_idea_confirmation = raw_input ("Configuration file exists, replacing it seems to be a bad idea, do you want to do it? y/[n]: ") or "n"
-		if (bad_idea_confirmation == "y"):
-			#os.path.join(path, *paths)
-			print("you are so dead")
-		else:
-			# save tempory conf file anyway
-			print params
+	writeParams(params)
 	
-	else:
-		if (not os.path.isdir(os.path.dirname(CONF_FILE))):
-			try:
-				os.mkdir(os.path.dirname(CONF_FILE))
-			except:
-				logging.error(os.error)
-				print os.error
-	logging.info(prams)
 	
 
 # application main
